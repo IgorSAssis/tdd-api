@@ -62,4 +62,20 @@ export default class UserController {
 
     }
 
+    async show(request: Request, response: Response) {
+
+        const { id } = request.params;
+
+        const userData = await connection("user").where("id", "=", id);
+
+        if (userData.length === 0) {
+
+            return response.status(400).send({ errorMessage: "User not found" });
+
+        }
+
+        return response.status(200).send();
+
+    }
+
 }

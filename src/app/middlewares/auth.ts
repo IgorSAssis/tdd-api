@@ -3,21 +3,22 @@ import { Request, Response, NextFunction } from "express";
 import connection from "../database/connection";
 import { verify } from "../../token/jwt";
 
-export async function verifyToken(request: Request, response: Response, next: NextFunction) {
+export async function authorizationMiddleware(request: Request, response: Response, next: NextFunction) {
 
-    const credentials = request.headers.authorization;
 
-    if (!credentials) {
+    if (!request.headers || !request.headers.authorization) {
 
-        return response.status(400).send({ errorMessage: "Bearer token must be provided" });
+        return response.status(400).send({ errorMessage: "Missing JWT token from the 'Authorization' header" });
 
     }
+
+    const credentials = request.headers.authorization;
 
     const [, token] = credentials.split(" ");
 
     if (!token) {
 
-        return response.status(400).send({ errorMessage: "Missing token" });
+        return response.status(400).send({ errorMessage: "Missing token in 'Authorization' header" });
 
     }
 
@@ -27,15 +28,7 @@ export async function verifyToken(request: Request, response: Response, next: Ne
 
         if (!userId) {
 
-            return response.status(400).send({ errorMessage: "This token not contain a user identification" });
-
-        }
-
-        const user = await connection("user").where("id", "=", userId);
-
-        if (user.length === 0) {
-
-            return response.status(400).send({ errorMessage: "The token contain an invalid identification" });
+            return response.status(401).send({ errorMessage: "This token not contain a user identification" });
 
         }
 

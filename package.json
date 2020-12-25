@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "tsnd --respawn --transpile-only --ignore-watch node_modules src/server.ts",
-    "test": "jest --detectOpenHandles"
+    "test": "NODE_ENV=test jest --detectOpenHandles"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.8",
