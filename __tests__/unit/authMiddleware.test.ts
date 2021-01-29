@@ -3,7 +3,7 @@ import { authorizationMiddleware } from "../../src/app/middlewares/auth";
 
 import { sign } from "../../src/token/jwt";
 
-describe("Authentication middleware", () => {
+describe.skip("Authentication middleware", () => {
 
     let mockRequest: Partial<Request>;
     let mockResponse: Partial<Response>;

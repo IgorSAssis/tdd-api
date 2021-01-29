@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 
-import connection from "../database/connection";
 import { verify } from "../../token/jwt";
 
 export async function authorizationMiddleware(request: Request, response: Response, next: NextFunction) {

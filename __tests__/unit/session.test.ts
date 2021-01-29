@@ -3,7 +3,7 @@ import request from "supertest";
 import app from "../../src/app";
 import connection from "../../src/app/database/connection";
 
-describe("Session", () => {
+describe.skip("Session", () => {
 
     beforeAll(async () => {
 

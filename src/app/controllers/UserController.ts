@@ -3,9 +3,11 @@ import bcrypt from "bcrypt";
 
 import connection from "../database/connection";
 
-export default class UserController {
+function userController(configuration = {}) {
 
-    async create(request: Request, response: Response) {
+    const database = configuration.connection || connection;
+
+    async function create(request: Request, response: Response) {
 
         const { name, surname, email, password } = request.body;
 
@@ -15,58 +17,49 @@ export default class UserController {
 
         }
 
-        const user = await connection("user").where("email", "=", email);
+        if (password.length < 8) {
 
-        if(user.length > 0) {
-            
+            return response.status(400).send({ errorMessage: "Password must have at least 8 letters" })
+
+        }
+
+        const user = await database("user").where("email", "=", email);
+
+        if (user.length > 0) {
+
             return response.status(400).send({ errorMessage: "E-mail already registered" });
 
         }
 
-        if(password.length < 8) {
-
-            return response.status(400).send({ errorMessage: "Password must have at least 8 letters"})
-            
-        }
-
-        bcrypt.genSalt(10, function (err, salt) {
+        bcrypt.hash(password, 10, async function (err, hash) {
 
             if (err) {
-
+                console.log("OU NOUUUUUUUUUUUUUUUUUUUUUUUUUUUU")
                 throw err;
 
             }
 
-            bcrypt.hash(password, salt, async function (err, hash) {
+            const [userId] = await database("user").insert({ name, surname, email, password: hash });
+            return response.status(201).json({ userId });
 
-                if (err) {
-
-                    throw err;
-
-                }
-
-                const userId = await connection("user").insert({ name, surname, email, password: hash });
-                return response.status(201).json({ userId });
-
-            });
 
         });
 
     }
 
-    async listAll(request: Request, response: Response) {
+    async function listAll(request: Request, response: Response) {
 
-        
+        const users = await database("user");
 
-        return response.status(200).send();
+        return response.status(200).json(users);
 
     }
 
-    async show(request: Request, response: Response) {
+    async function show(request: Request, response: Response) {
 
         const { id } = request.params;
 
-        const userData = await connection("user").where("id", "=", id);
+        const userData = await database("user").where("id", "=", id);
 
         if (userData.length === 0) {
 
@@ -74,8 +67,18 @@ export default class UserController {
 
         }
 
-        return response.status(200).send();
+        return response.status(200).json({ user: userData[0] });
+
+    }
+
+    return {
+
+        create,
+        listAll,
+        show
 
     }
 
 }
+
+export default userController;

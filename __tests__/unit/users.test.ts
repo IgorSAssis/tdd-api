@@ -1,59 +1,179 @@
-import request from "supertest";
 import { Request, Response } from "express";
+import Knex from "knex";
+import bcrypt from "bcrypt";
 
-import UserController from "../../src/app/controllers/UserController";
-import app from "../../src/app";
-import connection from "../../src/app/database/connection";
+import userController from "../../src/app/controllers/UserController";
 
 describe("Users", () => {
 
-    const userController = new UserController();
-
+    let mockUserController;
     let mockRequest: Partial<Request>;
     let mockResponse: Partial<Response>;
-
-    beforeAll(async () => {
-
-        await connection.migrate.rollback();
-        await connection.migrate.latest();
-        await connection.seed.run();
-
-    });
+    let mockKnex: Partial<Knex>;
+    let mockBcrypt;
 
     beforeEach(() => {
 
         mockRequest = {};
         mockResponse = {
             send: jest.fn().mockReturnThis(),
+            json: jest.fn().mockReturnThis(),
             status: jest.fn().mockReturnThis()
         }
-
-    })
-
-    it("Should return status code 400 if user is not registered in database", async () => {
-
-        jest.mock("../../src/app/database/connection", () => {
-            return [ { id: 1 } ];
-        })
-
-        const expectedResponse = { errorMessage: "User not found" };
-        mockRequest = {
-            params: {
-                id: "1"
-            }
-        }
-
-        await userController.show(mockRequest as Request, mockResponse as Response);
-
-        expect(mockResponse.status).toHaveBeenCalledWith(400);
-        expect(mockResponse.send).toHaveBeenCalledWith(expectedResponse);
+        mockUserController = userController();
 
     });
 
-    afterAll(async () => {
+    describe("show method", () => {
 
-        await connection.destroy();
+        it("Should return status code 400 if user is not registered in database", async () => {
+
+            mockRequest = {
+                params: {
+                    id: "1"
+                }
+            }
+
+            mockKnex = () => {
+                return {
+                    where: jest.fn().mockImplementation(() => {
+                        return []
+                    }),
+                }
+            }
+
+            const expectedResponse = { errorMessage: "User not found" };
+            mockUserController = userController({ connection: mockKnex as Knex });
+
+            await mockUserController.show(mockRequest as Request, mockResponse as Response);
+
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+            expect(mockResponse.send).toHaveBeenCalledWith(expectedResponse);
+
+        });
+
+    });
+
+    describe("create method", () => {
+
+        it("Should return status code 400 if missing params in the request body", async () => {
+
+            mockRequest = {
+                body: {
+                    name: "",
+                    surname: "teste",
+                    email: "teste@teste.com",
+                    password: "12345"
+                }
+            }
+
+            const expectedResponse = { errorMessage: "Missing values in request body" };
+
+            await mockUserController.create(mockRequest as Request, mockResponse as Response);
+
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+            expect(mockResponse.send).toHaveBeenCalledWith(expectedResponse);
+
+        });
+
+        it("Should return status code 400 if the password size is less than 8 characters", async () => {
+
+            mockRequest = {
+                body: {
+                    name: "teste",
+                    surname: "teste",
+                    email: "teste@teste.com",
+                    password: "12345"
+                }
+            }
+
+            const expectedResponse = { errorMessage: "Password must have at least 8 letters" };
+
+            await mockUserController.create(mockRequest as Request, mockResponse as Response);
+
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+            expect(mockResponse.send).toHaveBeenCalledWith(expectedResponse);
+
+        });
+
+        it("Should return status code 400 if an email already registered have been send in request body", async () => {
+
+            const expectedResponse = { errorMessage: "E-mail already registered" };
+
+            mockRequest = {
+                body: {
+                    name: "teste",
+                    surname: "teste",
+                    email: "teste@teste.com",
+                    password: "12345678"
+                }
+            };
+
+            mockKnex = () => {
+                return {
+                    where: jest.fn().mockImplementation(() => {
+                        return [{ id: 1 }];
+                    }),
+                }
+            };
+
+            mockUserController = userController({ connection: mockKnex as Knex });
+
+            await mockUserController.create(mockRequest as Request, mockResponse as Response);
+
+
+            expect(mockResponse.status).toHaveBeenCalledWith(400);
+            expect(mockResponse.send).toHaveBeenCalledWith(expectedResponse);
+
+
+        });
+
+        it("Should return status code 201 and user id if the user was registered with success", async (done) => {
+
+            const userId = 1;
+
+            mockRequest = {
+                body: {
+                    name: "teste",
+                    surname: "teste",
+                    email: "teste@teste.com",
+                    password: "123456789"
+                }
+            };
+
+            mockResponse.json = jest.fn().mockReturnValue({ userId });
+
+            mockKnex = () => {
+                return {
+                    insert: jest.fn().mockImplementation(() => {
+                        return [{ id: userId }];
+                    }),
+                    where: jest.fn().mockImplementation(() => {
+                        return [];
+                    }),
+                }
+            };
+
+            try {
+
+                mockUserController = userController({ connection: mockKnex as Knex });
+
+                await mockUserController.create(mockRequest as Request, mockResponse as Response);
+
+                expect(mockResponse.status).toHaveBeenCalledWith(201);
+                expect(mockResponse.json).toHaveBeenCalledWith({ userId });
+                done();
+
+            }
+            catch (err) {
+
+                done(err);
+
+            }
+
+        });
 
     });
 
 });
+

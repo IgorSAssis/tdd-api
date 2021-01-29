@@ -4,9 +4,11 @@ import bcrypt from "bcrypt";
 import connection from "../database/connection";
 import { sign } from "../../token/jwt";
 
-export default class SessionController {
+function sessionController(configurations = {}) {
 
-    async retrieveToken(request: Request, response: Response) {
+    const database = configurations.connection || connection;
+
+    async function retrieveToken(request: Request, response: Response) {
 
         const credentials = request.headers.authorization;
 
@@ -16,7 +18,7 @@ export default class SessionController {
 
         }
 
-        const [ , token] = credentials.split(" ");
+        const [, token] = credentials.split(" ");
         const [email, password] = Buffer.from(token, "base64").toString().split(":");
 
         if (!email || !password) {
@@ -25,7 +27,7 @@ export default class SessionController {
 
         }
 
-        const user = await connection("user").select("id", "password").where("email", "=", email);
+        const user = await database("user").select("id", "password").where("email", "=", email);
 
         if (user.length === 0) {
 
@@ -44,7 +46,7 @@ export default class SessionController {
             if (result) {
 
                 const userToken = sign({ userId: user[0].id });
-                
+
                 return response.status(200).send({ token: userToken });
 
             }
@@ -55,4 +57,10 @@ export default class SessionController {
 
     }
 
+    return {
+        retrieveToken
+    }
+
 }
+
+export default sessionController;
